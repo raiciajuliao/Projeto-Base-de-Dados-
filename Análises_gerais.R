@@ -4,17 +4,17 @@
 
 # Filtrar apenas para garantir que TP_ACIDENT é válido (1 a 5)
 
-dados <- dados_brutos %>%
+dados_atuais <- dados_atuais_brutos %>%
   filter(TP_ACIDENT %in% c("1", "2", "3", "4", "5")) 
 
 # --- BLOCO DE SEGURANÇA: GARANTIR COLUNAS ---
 # Isso verifica se as colunas de Aranha, Escorpião e Lagarta existem.
 # Se não existirem, o R cria elas vazias para não dar erro.
 
-if(!"ANI_SERPEN" %in% names(dados_brutos)) dados_brutos$ANI_SERPEN <- NA
-if(!"ANI_ARANHA" %in% names(dados_brutos)) dados_brutos$ANI_ARANHA <- NA
-if(!"ANI_ESCORP" %in% names(dados_brutos)) dados_brutos$ANI_ESCORP <- NA
-if(!"ANI_LAGART" %in% names(dados_brutos)) dados_brutos$ANI_LAGART <- NA
+if(!"ANI_SERPEN" %in% names(dados_atuais_brutos)) dados_atuais_brutos$ANI_SERPEN <- NA
+if(!"ANI_ARANHA" %in% names(dados_atuais_brutos)) dados_atuais_brutos$ANI_ARANHA <- NA
+if(!"ANI_ESCORP" %in% names(dados_atuais_brutos)) dados_atuais_brutos$ANI_ESCORP <- NA
+if(!"ANI_LAGART" %in% names(dados_atuais_brutos)) dados_atuais_brutos$ANI_LAGART <- NA
 
 
 # Limpar a memória
@@ -111,10 +111,16 @@ dados <- dados %>%
     
   )
 
+# --- FILTRO PARA DADOS ATUAIS (2020-2025) ---
 
-# --- --- --- --- --- --- --- --- --- --- --- ---
-# ETAPA 5: ANÁLISES DO PROJETO
-# --- --- --- --- --- --- --- --- --- --- --- ---
+dados_atuais <- dados %>%
+  filter(ANO_NOT >= 2020 & ANO_NOT <= 2025)
+
+# Verificação rápida
+print(paste("Total de casos de 2020 a 2025:", nrow(dados_atuais)))
+
+
+
 
 ### --- ANÁLISE 1: FREQUÊNCIAS (AGENTE CAUSADOR DETALHADO) --- ###
 
@@ -122,7 +128,7 @@ dados <- dados %>%
 
 # Filtrar os ignorados para o gráfico ficar mais limpo (testar)
 
-freq_agente <- dados %>%
+freq_agente <- dados_atuais %>%
   filter(AGENTE_f != "Espécie Ignorada/Não Informada") %>%
   count(AGENTE_f, TIPO_ANIMAL, sort = TRUE) %>%
   mutate(Percentual = n / sum(n) * 100)
@@ -156,7 +162,7 @@ g1 <- ggplot(freq_agente, aes(x = reorder(AGENTE_f, n), y = n, fill = TIPO_ANIMA
     hjust = -0.1, # Afasta um pouco o texto da barra
     size = 3.5,
     fontface = "plain",
-    color = "#333333" # Cinza escuro para o texto (mais elegante que preto puro)
+    color = "#333333"
   ) +
   
   # 3. Inverter eixos
@@ -193,7 +199,7 @@ print(g1)
 
 ### --- ANÁLISE 2: PERFIL (IDADE) --- ###
 
-g2 <- ggplot(dados %>% filter(IDADE_NUM > 0 & IDADE_NUM < 95), aes(x = IDADE_NUM)) +
+g2 <- ggplot(dados_atuais %>% filter(IDADE_NUM > 0 & IDADE_NUM < 95), aes(x = IDADE_NUM)) +
   geom_histogram(binwidth = 5, fill = "darkorange", color = "white") +
   scale_y_continuous(
     # scale = 0.001 -> Divide o número por 1000 (300000 vira 300)
@@ -205,7 +211,7 @@ g2 <- ggplot(dados %>% filter(IDADE_NUM > 0 & IDADE_NUM < 95), aes(x = IDADE_NUM
     limits = c(0, 95) # Trava o gráfico no limite escolhido
   ) +
   labs(title = "Distribuição de Casos por Idade (Todos os Acidentes Peçonhentos)",
-       subtitle = paste("Casos registrados de 2007 a 2025"),
+       subtitle = paste("Casos registrados de 2020 a 2025"),
        x = "Idade (anos)",
        y = "Número de Casos") +
   
@@ -219,7 +225,7 @@ print(g2)
 
 ### --- ANÁLISE 3: GRAVIDADE X TIPO DE ANIMAL --- ###
 
-grav_x_animal <- dados %>%
+grav_x_animal <- dados_atuais %>%
   filter(GRAVIDADE_f != "Ignorado/Em Branco") %>%
   count(TIPO_ANIMAL, GRAVIDADE_f) %>%
   group_by(TIPO_ANIMAL) %>%
@@ -289,7 +295,7 @@ print(g3_agrupado)
 ### --- ANÁLISE 4: LETALIDADE POR AGENTE ESPECÍFICO --- ###
 # Observar quais grupos mais matam proporcionalmente
 
-letalidade <- dados %>%
+letalidade <- dados_atuais %>%
   filter(EVOLUCAO_f != "Ignorado/Em Branco" & AGENTE_f != "Espécie Ignorada/Não Informada") %>%
   group_by(AGENTE_f) %>%
   summarise(
@@ -321,11 +327,10 @@ g_let_cor <- ggplot(letalidade, aes(x = reorder(AGENTE_f, Letalidade_pct), y = L
   geom_col(aes(fill = Letalidade_pct)) +
   geom_text(
     aes(label = paste0(format(round(Letalidade_pct, 2), decimal.mark = ","), "%")), 
-    hjust = -0.1,     # Move o texto um pouquinho para a direita da barra
-    size = 3.5,       # Tamanho da fonte
-    fontface = "plain" # Negrito para facilitar leitura
+    hjust = -0.1,     
+    size = 3.5,       
+    fontface = "plain" 
   ) +
-  
   
   # Inverte os eixos para barras horizontais
   coord_flip() +
@@ -361,3 +366,143 @@ g_let_cor <- ggplot(letalidade, aes(x = reorder(AGENTE_f, Letalidade_pct), y = L
   )
 
 print(g_let_cor)
+
+
+# --- ANÁLISE DE CASOS TOTAIS POR ANO  --- #
+
+# 1. Contar os casos por ANO_NOT
+freq_ano <- dados %>% 
+  count(ANO_NOT, name = "Total_Casos")
+
+# 2. Gráfico de Barras
+g_ano <- ggplot(freq_ano, aes(x = factor(ANO_NOT), y = Total_Casos)) +
+  
+  geom_col(fill = "#2E86C1") + 
+  
+  geom_text(
+    aes(label = scales::label_number(scale = 0.001, suffix = " mil", big.mark = ".", decimal.mark = ",")(Total_Casos)),
+    vjust = -0.5,  # Afasta o texto um pouco da barra
+    size = 3,
+    color = "#333333",
+    fontface = "bold"
+  ) +
+  
+  # Formatar o eixo Y (mantido igual, está correto)
+  scale_y_continuous(
+    labels = scales::label_number(scale = 0.001, suffix = " mil", big.mark = ".", decimal.mark = ","),
+    # Expandir o eixo para o rótulo da maior barra caber sem cortar
+    expand = expansion(mult = c(0, 0.15)) 
+  ) +
+  
+  labs(title = "Acidentes por Ano",
+       subtitle = "Período de 2007 a 2025",
+       x = "Ano de Notificação",
+       y = "Número de Casos") +
+  
+  theme_minimal() +
+  theme(
+    
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5), 
+    
+    plot.subtitle = element_text(size = 11, hjust = 0.5),
+    
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 9)
+  )
+
+print(g_ano)
+
+
+
+### Análises relacionadas ao sexo ###
+
+# --- ANÁLISE DE BARRAS AGRUPADAS (IDADE x SEXO) ---
+
+# 1. Preparar os dados (Mantido igual)
+dados_agrupados <- dados %>%
+  # Filtrar Idade e Sexo
+  filter(IDADE_NUM >= 0 & IDADE_NUM <= 100 & SEXO_f %in% c("Masculino", "Feminino")) %>%
+  
+  # Criar faixas etárias de 5 em 5 anos e Contar (n)
+  group_by(SEXO_f, IDADE_BIN = cut(IDADE_NUM, breaks = seq(0, 100, 5), right = FALSE, include.lowest = TRUE)) %>%
+  summarise(n = n(), .groups = 'drop')
+
+
+# 2. Gráfico de Barras Agrupadas
+g2_horizontal <- ggplot(dados_agrupados, aes(x = IDADE_BIN, y = n, fill = SEXO_f)) +
+  
+  geom_bar(stat = "identity", position = "dodge", width = 0.8) +
+  
+  scale_y_continuous(
+    labels = scales::label_number(scale = 0.001, suffix = " mil", big.mark = "."),
+    expand = expansion(mult = c(0, 0.10)) # Espaço extra acima das barras
+  ) +
+  
+  # Cores para Sexo
+  scale_fill_manual(values = c("Masculino" = "#2E86C1", "Feminino" = "#C0392B")) +
+  
+  labs(title = "Distribuição de Casos por Idade e Sexo (Comparativo)",
+       subtitle = "Número de notificações em faixas etárias de 5 anos.",
+       x = "Faixa Etária",
+       y = "Número de Casos",
+       fill = "Sexo") +
+  
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5), # Centraliza título
+    plot.subtitle = element_text(hjust = 0.5),           # Centraliza subtítulo
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 9), 
+    
+    panel.grid.major.y = element_blank() # Remove linhas de grade horizontais
+  )
+
+print(g2_horizontal)
+
+
+# --- ANÁLISE: SÉRIE TEMPORAL POR SEXO ---
+
+# 1. Preparar os dados: Filtrar apenas Masculino e Feminino e contar por ano
+freq_ano_sexo <- dados %>%
+  filter(SEXO_f %in% c("Masculino", "Feminino")) %>%
+  count(ANO_NOT, SEXO_f, name = "Total_Casos")
+
+# 2. Gráfico de Barras Agrupadas
+g_ano_sexo <- ggplot(freq_ano_sexo, aes(x = factor(ANO_NOT), y = Total_Casos, fill = SEXO_f)) +
+  
+  # Barras agrupadas (lado a lado)
+  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
+  
+  # Adicionar Rótulos (Usamos precisão 1e-3 para mostrar em mil)
+  geom_text(
+    # Ex: 100 mil. accuracy=1 evita casas decimais longas
+    aes(label = scales::number(Total_Casos, big.mark = ".", scale = 1e-3, accuracy = 1)),
+    position = position_dodge(width = 0.8), 
+    vjust = -0.5,
+    size = 2.5,
+    color = "gray30"
+  ) +
+  
+  # Formatar o eixo Y para milhares (mil)
+  scale_y_continuous(
+    labels = scales::label_number(scale = 0.001, suffix = " mil", big.mark = "."),
+    expand = expansion(mult = c(0, 0.10)) # Espaço extra acima
+  ) +
+  scale_fill_manual(values = c("Masculino" = "#2E86C1", "Feminino" = "#C0392B")) +
+  
+  labs(title = "Evolução Anual de Acidentes por Sexo",
+       subtitle = "Comparativo do volume de notificações entre Masculino e Feminino ao longo dos anos.",
+       x = "Ano de Notificação",
+       y = "Número de Casos",
+       fill = "Sexo") +
+  
+  theme_minimal() +
+  theme(
+    # Centralização
+    plot.title = element_text(face = "bold", hjust = 0.5), 
+    plot.subtitle = element_text(hjust = 0.5),
+    # Rotação para anos
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 9), 
+    legend.position = "bottom"
+  )
+
+print(g_ano_sexo)
+
