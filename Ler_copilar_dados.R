@@ -54,7 +54,7 @@ tryCatch({
   # NU_IDADE_N (Idade, no formato "4025")
   # CS_SEXO (Sexo)
   # TP_ACIDENT (Tipo de Acidente / Animal)
-  # ANI_SERPEN (Gênero da Serpente) -> ESSA É A CHAVE!
+  # ANI_SERPEN (Gênero da Serpente)
   # ANT_TEMPO_ (Tempo até Atendimento)
   # TRA_CLASSI (Classificação Final / Gravidade)
   # EVOLUCAO (Evolução do Caso)
@@ -107,9 +107,23 @@ else {print(paste(length(arquivos_dbc), "arquivos .dbc encontrados:", toString(a
   
   dados_brutos <- dplyr::bind_rows(lista_de_dados)
   
+  # --- FILTRO PARA DADOS ATUAIS (2020-2025) ---
+  
+  dados_atuais <- dados_brutos %>%
+    filter(DT_NOTIFIC >= 2020 & DT_NOTIFIC <= 2025)
+  
   # Limpar a memória (opcional)
   
   rm(lista_de_dados)
 
+  
+  # --- FILTRO PARA DADOS ANTIGOS (2007-2019) ---
+  
+  dados_antigos <- dados_brutos %>%
+    filter(DT_NOTIFIC >= 2007 & DT_NOTIFIC <= 2019)
+  
+  # Limpar a memória (opcional)
+  
+  rm(lista_de_dados)
   
   
